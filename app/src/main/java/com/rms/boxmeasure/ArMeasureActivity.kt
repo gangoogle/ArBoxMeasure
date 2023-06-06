@@ -19,6 +19,7 @@ import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.google.ar.core.Anchor
 import com.google.ar.core.Config
+import com.google.ar.core.DepthPoint
 import com.google.ar.core.HitResult
 import com.google.ar.core.Plane
 import com.google.ar.core.Pose
@@ -30,6 +31,7 @@ import com.google.ar.sceneform.Scene
 import com.google.ar.sceneform.SceneView
 import com.google.ar.sceneform.math.Quaternion
 import com.google.ar.sceneform.math.Vector3
+import com.google.ar.sceneform.rendering.CameraStream
 import com.google.ar.sceneform.rendering.MaterialFactory
 import com.google.ar.sceneform.rendering.ModelRenderable
 import com.google.ar.sceneform.rendering.ShapeFactory
@@ -43,6 +45,12 @@ import com.rms.boxmeasure.databinding.ActivityArMeasureBinding
  * AR 测量首页
  */
 class ArMeasureActivity : AppCompatActivity() {
+
+    /**
+     * 启用深度信息
+     */
+    private val OPEN_DEPTH = false
+
 
     private lateinit var mArFragment: ArFragment
     private lateinit var mBinding: ActivityArMeasureBinding
@@ -189,7 +197,7 @@ class ArMeasureActivity : AppCompatActivity() {
         val rotationFromAToB = Quaternion.lookRotation(directionFromTopToBottom, Vector3.up())
         MaterialFactory.makeOpaqueWithColor(
             this@ArMeasureActivity,
-            com.google.ar.sceneform.rendering.Color(Color.parseColor("#275df2"))
+            com.google.ar.sceneform.rendering.Color(Color.parseColor("#ea373e"))
         ).thenAccept { material ->
             val lineMode = ShapeFactory.makeCube(
                 Vector3(0.005f, 0.005f, difference.length()), Vector3.zero(), material
@@ -227,18 +235,22 @@ class ArMeasureActivity : AppCompatActivity() {
         mArFragment.apply {
             setOnViewCreatedListener { arSceneView ->
                 arSceneView.setFrameRateFactor(SceneView.FrameRate.FULL)
-//                //启动深度信息
-//                arSceneView.cameraStream.depthOcclusionMode =
-//                    CameraStream.DepthOcclusionMode.DEPTH_OCCLUSION_ENABLED
+                //启动深度信息
+                if (OPEN_DEPTH) {
+                    arSceneView.cameraStream.depthOcclusionMode =
+                        CameraStream.DepthOcclusionMode.DEPTH_OCCLUSION_ENABLED
+                }
             }
             setOnSessionConfigurationListener { session, config ->
                 config.setInstantPlacementMode(Config.InstantPlacementMode.DISABLED)
                 config.setPlaneFindingMode(Config.PlaneFindingMode.HORIZONTAL)
                 config.setFocusMode(Config.FocusMode.AUTO)
                 //depth深度信息
-//                if (session.isDepthModeSupported(Config.DepthMode.AUTOMATIC)) {
-//                    config.depthMode = Config.DepthMode.AUTOMATIC
-//                }
+                if (OPEN_DEPTH) {
+                    if (session.isDepthModeSupported(Config.DepthMode.AUTOMATIC)) {
+                        config.depthMode = Config.DepthMode.AUTOMATIC
+                    }
+                }
             }
 
         }
@@ -370,23 +382,26 @@ class ArMeasureActivity : AppCompatActivity() {
                         return@foo
                     }
                 } else if (trackable is com.google.ar.core.Point) {
-                    if (mAnchorList.size == 3) {
-                        //通过特征点寻找高度
-                        Log.d(TAG, "sendHit:point ${hit.hitPose}")
-                        val startPose = hit.hitPose
-                        val endPose = mAnchorList[1].anchor.pose
-                        val dx = startPose.tx() - endPose.tx()
-                        val dy = startPose.ty() - endPose.ty()
-                        val dz = startPose.tz() - endPose.tz()
-                        Log.d(TAG, "sendHit:dx $dx dy $dy dz $dz")
-                        val length = Math.sqrt((dx * dx + dy * dy + dz * dz).toDouble())
-                        Log.d(TAG, "sendHit:length  $length")
-                        if (dx <= 0.05f && dz < 0.05f) {
-                            Log.d(TAG, "符合点位")
-                            if (length > dy) {
-                                mBinding.skHeightControl.value = (length * 100 * 2).toInt()
-                            } else {
-                                mBinding.skHeightControl.value = (dy * 100 * 2).toInt()
+                    if (mAnchorList.size == 3 && !OPEN_DEPTH) {
+                        checkHeightPoint(hit) { isMatch, dy, height ->
+                            if (isMatch) {
+                                if (height > dy) {
+                                    mBinding.skHeightControl.value = (height * 100 * 2).toInt()
+                                } else {
+                                    mBinding.skHeightControl.value = (dy * 100 * 2).toInt()
+                                }
+                            }
+                        }
+                    }
+                } else if (trackable is DepthPoint) {
+                    if (mAnchorList.size == 3 && OPEN_DEPTH) {
+                        checkHeightPoint(hit) { isMatch, dy, height ->
+                            if (isMatch) {
+                                if (height > dy) {
+                                    mBinding.skHeightControl.value = (height * 100 * 2).toInt()
+                                } else {
+                                    mBinding.skHeightControl.value = (dy * 100 * 2).toInt()
+                                }
                             }
                         }
                     }
@@ -394,6 +409,34 @@ class ArMeasureActivity : AppCompatActivity() {
             }
         }
     }
+
+    /**
+     * 检查高度点
+     */
+    private fun checkHeightPoint(
+        hit: HitResult, callBack: (isMatch: Boolean, dy: Double, height: Double) -> Unit
+    ) {
+        //通过特征点寻找高度
+        Log.d(TAG, "sendHit:point ${hit.hitPose}")
+        val startPose = hit.hitPose
+        val endPose = mAnchorList[1].anchor.pose
+        val dx = startPose.tx() - endPose.tx()
+        val dy = startPose.ty() - endPose.ty()
+        val dz = startPose.tz() - endPose.tz()
+        Log.d(TAG, "sendHit:dx $dx dy $dy dz $dz")
+        val length = Math.sqrt((dx * dx + dy * dy + dz * dz).toDouble())
+        Log.d(TAG, "sendHit:length  $length")
+        if (length == 0.0 || dy == 0f) {
+            callBack.invoke(false, 0.0, 0.0)
+            return
+        }
+        if ((dx <= 0.05f && dx >= -0.05f) && (dz < 0.05f && dz >= -0.05f)) {
+            callBack.invoke(true, dy.toDouble(), length)
+        } else {
+            callBack.invoke(false, 0.0, 0.0)
+        }
+    }
+
 
     /**
      * 设置监听
@@ -438,20 +481,25 @@ class ArMeasureActivity : AppCompatActivity() {
                     }
                 } else if (trackable is com.google.ar.core.Point) {
                     //如果已经有三个锚点了，就寻找特征点
-                    if (mAnchorList.size == 3) {
-                        val startPose = hit.hitPose
-                        val endPose = mAnchorList[1].anchor.pose
-                        val dx = startPose.tx() - endPose.tx()
-                        val dy = startPose.ty() - endPose.ty()
-                        val dz = startPose.tz() - endPose.tz()
-                        if (dx <= 0.05f && dz < 0.05f) {
-                            rayHasPlane = true
+                    if (mAnchorList.size == 3 && !OPEN_DEPTH) {
+                        checkHeightPoint(hit) { isMatch, dy, height ->
+                            if (isMatch) {
+                                rayHasPlane = true
+                            }
+                        }
+                    }
+                } else if (trackable is DepthPoint) {
+                    if (mAnchorList.size == 3 && OPEN_DEPTH) {
+                        checkHeightPoint(hit) { isMatch, dy, height ->
+                            if (isMatch) {
+                                rayHasPlane = true
+                            }
                         }
                     }
                 }
             }
             if (rayHasPlane) {
-                mBinding.ivFpsTarget.setColorFilter(Color.parseColor("#669462"))
+                mBinding.ivFpsTarget.setColorFilter(Color.parseColor("#66de7b"))
                 mBinding.btRay.shapeDrawableBuilder.apply {
                     solidColor = Color.parseColor("#fcfcfc")
                     intoBackground()
@@ -554,7 +602,7 @@ class ArMeasureActivity : AppCompatActivity() {
                 Glide.with(this).load(R.mipmap.ic_box_step_4).into(mBinding.ivBoxStep)
                 mBinding.tvBoxStepHint.text = "定位箱体高度"
             }
-            
+
         }
     }
 
