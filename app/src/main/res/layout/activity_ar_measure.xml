@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+
+    <RelativeLayout
+        android:id="@+id/rl_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+
+        <androidx.fragment.app.FragmentContainerView
+            android:id="@+id/arFragment"
+            android:name="com.google.ar.sceneform.ux.ArFragment"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <com.hjq.shape.layout.ShapeLinearLayout
+            android:layout_width="150dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="5dp"
+            android:layout_marginTop="5dp"
+            android:layout_marginEnd="5dp"
+            android:layout_marginBottom="5dp"
+            android:orientation="vertical"
+            android:padding="10dp"
+            app:shape_radius="5dp"
+            app:shape_solidColor="#552b5476">
+
+            <TextView
+                android:id="@+id/tv_width"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/white"
+                android:textSize="18dp" />
+
+            <TextView
+                android:id="@+id/tv_length"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/white"
+                android:textSize="18dp" />
+
+            <TextView
+                android:id="@+id/tv_height"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/white"
+                android:textSize="18dp" />
+
+        </com.hjq.shape.layout.ShapeLinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="10dp">
+
+            <ImageView
+                android:id="@+id/iv_box_step"
+                android:layout_width="100dp"
+                android:layout_height="100dp"
+                android:alpha="0.8"
+                android:scaleType="centerCrop" />
+
+            <com.hjq.shape.view.ShapeTextView
+                android:id="@+id/tv_box_step_hint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:padding="5dp"
+                android:text="点击第一个底角"
+                android:textColor="#b54d55"
+                android:textSize="18sp"
+                app:shape_radius="5dp"
+                app:shape_solidColor="#552b5476" />
+
+        </LinearLayout>
+
+        <abak.tr.com.boxedverticalseekbar.BoxedVertical
+            android:id="@+id/sk_height_control"
+            android:layout_width="40dp"
+            android:layout_height="320dp"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentBottom="true"
+            android:layout_gravity="center"
+            android:layout_marginEnd="10dp"
+            android:layout_marginBottom="120dp"
+            android:alpha="0.8"
+            app:backgroundColor="@color/color_background"
+            app:cornerRadius="20dp"
+            app:defaultValue="0"
+            app:imageEnabled="false"
+            app:max="300"
+            app:progressColor="@color/color_progress"
+            app:step="1"
+            app:textBottomPadding="20"
+            app:textColor="#0860d3"
+            app:textEnabled="true"
+            app:textSize="12sp"
+            app:touchDisabled="true" />
+
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_marginBottom="10dp"
+            android:orientation="horizontal">
+
+            <com.hjq.shape.layout.ShapeLinearLayout
+                android:id="@+id/bt_return"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:layout_marginStart="20dp"
+                android:alpha="0.7"
+                android:gravity="center"
+                app:shape_radius="40dp"
+                app:shape_solidColor="#8b8b8c">
+
+                <ImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@drawable/baseline_keyboard_backspace_24"
+                    app:tint="@color/white" />
+
+            </com.hjq.shape.layout.ShapeLinearLayout>
+
+
+            <com.hjq.shape.layout.ShapeLinearLayout
+                android:id="@+id/bt_ray"
+                android:layout_width="100dp"
+                android:layout_height="100dp"
+                android:layout_centerInParent="true"
+                android:alpha="0.7"
+                android:gravity="center"
+                app:shape_radius="50dp"
+                app:shape_solidColor="#8b8b8c">
+
+                <ImageView
+                    android:id="@+id/iv_ray_img"
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
+                    android:src="@drawable/baseline_add_24"
+                    app:tint="@color/white" />
+
+            </com.hjq.shape.layout.ShapeLinearLayout>
+
+            <com.hjq.shape.layout.ShapeLinearLayout
+                android:id="@+id/bt_sure"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="20dp"
+                android:alpha="0.7"
+                android:gravity="center"
+                app:shape_radius="40dp"
+                app:shape_solidColor="#8b8b8c">
+
+                <ImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@drawable/baseline_check_24"
+                    app:tint="@color/white" />
+
+            </com.hjq.shape.layout.ShapeLinearLayout>
+
+
+        </RelativeLayout>
+
+        <ImageView
+            android:id="@+id/iv_fps_target"
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:layout_centerInParent="true"
+            android:alpha="0.7"
+            android:src="@mipmap/dot"
+            android:visibility="visible" />
+    </RelativeLayout>
+
+</layout>
