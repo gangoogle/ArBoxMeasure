@@ -430,7 +430,7 @@ class ArMeasureActivity : AppCompatActivity() {
             callBack.invoke(false, 0.0, 0.0)
             return
         }
-        if ((dx <= 0.05f && dx >= -0.05f) && (dz < 0.05f && dz >= -0.05f)) {
+        if ((dx <= 0.05f && dx >= -0.05f) && (dz <= 0.05f && dz >= -0.05f)) {
             callBack.invoke(true, dy.toDouble(), length)
         } else {
             callBack.invoke(false, 0.0, 0.0)
