@@ -76,6 +76,12 @@ class ArMeasureActivity : AppCompatActivity() {
     //高度节点的文本UI
     private var mHeightNodeTextView: TextView? = null
 
+    //检测到的高度值
+    private var mDetectedHeight: Double? = null
+
+    //是否检测到有效高度
+    private var mIsHeightDetected: Boolean = false
+
     //长
     private var mLength: Double = 0.0
 
@@ -166,6 +172,8 @@ class ArMeasureActivity : AppCompatActivity() {
         mWidth = 0.0
         mHeight = 0.0
         mLength = 0.0
+        mDetectedHeight = null
+        mIsHeightDetected = false
         mBinding.skHeightControl.value = 0
         updateSizeUI()
     }
@@ -454,11 +462,11 @@ class ArMeasureActivity : AppCompatActivity() {
             TAG,
             "distance  to poseBC  ${distanceBC}"
         )
-        if ( dy == 0f) {
+        if ( dy <= 0f) {
             callBack.invoke(false, 0.0)
             return
         }
-        if ((distanceAB <= 0.05f && distanceAB >= -0.05f) || (distanceBC <= 0.05f && distanceBC >= -0.05f)) {
+        if ((distanceAB <= 0.12f && distanceAB >= -0.12f) || (distanceBC <= 0.12f && distanceBC >= -0.12f)) {
             callBack.invoke(true, dy.toDouble(), )
         } else {
             callBack.invoke(false, 0.0)
@@ -513,6 +521,8 @@ class ArMeasureActivity : AppCompatActivity() {
                         checkHeightPoint(hit) { isMatch, dy ->
                             if (isMatch) {
                                 rayHasPlane = true
+                                mDetectedHeight = dy
+                                mIsHeightDetected = true
                             }
                         }
                     }
@@ -521,11 +531,20 @@ class ArMeasureActivity : AppCompatActivity() {
                         checkHeightPoint(hit) { isMatch, dy ->
                             if (isMatch) {
                                 rayHasPlane = true
+                                mDetectedHeight = dy
+                                mIsHeightDetected = true
                             }
                         }
                     }
                 }
             }
+            if (!rayHasPlane && mAnchorList.size == 3) {
+                // Reset detection state when no valid height point found
+                mIsHeightDetected = false
+                mDetectedHeight = null
+            }
+            // Update UI based on detection state
+            updateHeightDetectionUI(rayHasPlane)
             if (rayHasPlane) {
                 mBinding.ivFpsTarget.setColorFilter(Color.parseColor("#66de7b"))
                 mBinding.btRay.shapeDrawableBuilder.apply {
@@ -569,6 +588,14 @@ class ArMeasureActivity : AppCompatActivity() {
                 finish()
             } else {
                 Toast.makeText(this, "请先测量尺寸", Toast.LENGTH_SHORT).show()
+            }
+        }
+        mBinding.btCaptureHeight.setOnClickListener {
+            // Capture the detected height
+            if (mIsHeightDetected && mDetectedHeight != null) {
+                val heightCm = mDetectedHeight!! * 100
+                mBinding.skHeightControl.value = (heightCm * 2).toInt()
+                Toast.makeText(this, "已捕获高度: ${String.format("%.1f", heightCm)}cm", Toast.LENGTH_SHORT).show()
             }
         }
         mBinding.skHeightControl.apply {
@@ -631,6 +658,47 @@ class ArMeasureActivity : AppCompatActivity() {
                 mBinding.tvBoxStepHint.text = "定位箱体高度"
             }
 
+        }
+    }
+
+    /**
+     * 更新高度检测UI反馈
+     */
+    private fun updateHeightDetectionUI(hasValidPoint: Boolean) {
+        if (mAnchorList.size < 3) {
+            // Hide height detection UI when not in height measurement mode
+            mBinding.tvDetectedHeight.visibility = View.GONE
+            mBinding.btCaptureHeight.visibility = View.GONE
+            mBinding.tvHeightHint.visibility = View.GONE
+            return
+        }
+
+        // Show height detection UI elements
+        mBinding.tvDetectedHeight.visibility = View.VISIBLE
+        mBinding.btCaptureHeight.visibility = View.VISIBLE
+        mBinding.tvHeightHint.visibility = View.VISIBLE
+
+        if (mIsHeightDetected && mDetectedHeight != null) {
+            // Valid height detected
+            val heightCm = mDetectedHeight!! * 100
+            mBinding.tvDetectedHeight.text = "检测高度: ${String.format("%.1f", heightCm)} CM"
+            mBinding.tvHeightHint.text = "已检测到高度${String.format("%.1f", heightCm)}cm，点击捕获"
+            mBinding.btCaptureHeight.isEnabled = true
+            mBinding.btCaptureHeight.alpha = 1.0f
+            mBinding.btCaptureHeight.shapeDrawableBuilder.apply {
+                solidColor = Color.parseColor("#66de7b")
+                intoBackground()
+            }
+        } else {
+            // No valid height detected
+            mBinding.tvDetectedHeight.text = "检测高度: -- CM"
+            mBinding.tvHeightHint.text = "请对准箱体顶部或使用滑动条"
+            mBinding.btCaptureHeight.isEnabled = false
+            mBinding.btCaptureHeight.alpha = 0.5f
+            mBinding.btCaptureHeight.shapeDrawableBuilder.apply {
+                solidColor = Color.parseColor("#8b8b8c")
+                intoBackground()
+            }
         }
     }
 
