@@ -98,6 +98,9 @@ class ArMeasureActivity : AppCompatActivity() {
 
     private val TAG = "BoxArCore"
 
+    //SeekBar值到高度(米)的转换系数: seekBarValue = height(cm) * 2
+    private val SEEKBAR_TO_HEIGHT_FACTOR = 2
+
     //结束节点列表
     private val mEndNodeArray = arrayListOf<Node>()
 
@@ -344,7 +347,7 @@ class ArMeasureActivity : AppCompatActivity() {
                 ViewRenderable.builder().setView(this@ArMeasureActivity, R.layout.renderable_text)
                     .build().thenAccept { it ->
                         mHeightNodeTextView = it.view as TextView
-                        mHeightNodeTextView?.text = "${String.format("%.1f", mHeight * 100)}CM"
+                        mHeightNodeTextView?.text = "${formatHeight(mHeight)}CM"
                         it.isShadowCaster = false
                         FaceToCameraNode().apply {
                             setParent(mEndNodeArray[mEndNodeArray.size - 2])
@@ -594,16 +597,16 @@ class ArMeasureActivity : AppCompatActivity() {
             // Capture the detected height
             if (mIsHeightDetected && mDetectedHeight != null) {
                 val heightCm = mDetectedHeight!! * 100
-                mBinding.skHeightControl.value = (heightCm * 2).toInt()
-                Toast.makeText(this, "已捕获高度: ${String.format("%.1f", heightCm)}cm", Toast.LENGTH_SHORT).show()
+                mBinding.skHeightControl.value = (heightCm * SEEKBAR_TO_HEIGHT_FACTOR).toInt()
+                Toast.makeText(this, "已捕获高度: ${formatHeight(mDetectedHeight!!)}cm", Toast.LENGTH_SHORT).show()
             }
         }
         mBinding.skHeightControl.apply {
             setOnBoxedPointsChangeListener(object : OnValuesChangeListener {
                 override fun onPointsChanged(boxedPoints: BoxedVertical?, points: Int) {
-                    val upDistance = (points).toFloat() / 2f
+                    val upDistance = (points).toFloat() / SEEKBAR_TO_HEIGHT_FACTOR
                     mHeight = upDistance / 100.0
-                    mHeightNodeTextView?.text = "${String.format("%.1f", mHeight * 100)}CM"
+                    mHeightNodeTextView?.text = "${formatHeight(mHeight)}CM"
                     updateSizeUI()
                     mHeightAnchorNode?.localScale = Vector3(0.1f, upDistance / 10f, 0.1f)
                 }
@@ -624,7 +627,7 @@ class ArMeasureActivity : AppCompatActivity() {
     private fun updateSizeUI() {
         mBinding.tvWidth.text = "宽：${String.format("%.1f", mWidth * 100)}CM"
         mBinding.tvLength.text = "长：${String.format("%.1f", mLength * 100)}CM"
-        mBinding.tvHeight.text = "高：${String.format("%.1f", mHeight * 100)}CM"
+        mBinding.tvHeight.text = "高：${formatHeight(mHeight)}CM"
         if (mAnchorList.size == 0) {
             mBinding.btReturn.visibility = View.INVISIBLE
         } else {
@@ -680,9 +683,9 @@ class ArMeasureActivity : AppCompatActivity() {
 
         if (mIsHeightDetected && mDetectedHeight != null) {
             // Valid height detected
-            val heightCm = mDetectedHeight!! * 100
-            mBinding.tvDetectedHeight.text = "检测高度: ${String.format("%.1f", heightCm)} CM"
-            mBinding.tvHeightHint.text = "已检测到高度${String.format("%.1f", heightCm)}cm，点击捕获"
+            val heightCm = formatHeight(mDetectedHeight!!)
+            mBinding.tvDetectedHeight.text = "检测高度: $heightCm CM"
+            mBinding.tvHeightHint.text = "已检测到高度${heightCm}cm，点击捕获"
             mBinding.btCaptureHeight.isEnabled = true
             mBinding.btCaptureHeight.alpha = 1.0f
             mBinding.btCaptureHeight.shapeDrawableBuilder.apply {
@@ -700,6 +703,13 @@ class ArMeasureActivity : AppCompatActivity() {
                 intoBackground()
             }
         }
+    }
+
+    /**
+     * 格式化高度值(米转为厘米，保留一位小数)
+     */
+    private fun formatHeight(heightInMeters: Double): String {
+        return String.format("%.1f", heightInMeters * 100)
     }
 
 }
