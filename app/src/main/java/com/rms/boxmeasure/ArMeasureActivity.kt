@@ -598,7 +598,7 @@ class ArMeasureActivity : AppCompatActivity() {
             if (mIsHeightDetected && mDetectedHeight != null) {
                 val heightCm = mDetectedHeight!! * 100
                 mBinding.skHeightControl.value = (heightCm * SEEKBAR_TO_HEIGHT_FACTOR).toInt()
-                Toast.makeText(this, "已捕获高度: ${formatHeight(mDetectedHeight!!)}cm", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "已捕获高度: ${formatHeight(mDetectedHeight!!)} CM", Toast.LENGTH_SHORT).show()
             }
         }
         mBinding.skHeightControl.apply {
@@ -685,7 +685,7 @@ class ArMeasureActivity : AppCompatActivity() {
             // Valid height detected
             val heightCm = formatHeight(mDetectedHeight!!)
             mBinding.tvDetectedHeight.text = "检测高度: $heightCm CM"
-            mBinding.tvHeightHint.text = "已检测到高度${heightCm}cm，点击捕获"
+            mBinding.tvHeightHint.text = "已检测到高度 ${heightCm} CM，点击捕获"
             mBinding.btCaptureHeight.isEnabled = true
             mBinding.btCaptureHeight.alpha = 1.0f
             mBinding.btCaptureHeight.shapeDrawableBuilder.apply {
