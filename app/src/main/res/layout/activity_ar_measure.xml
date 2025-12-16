@@ -103,6 +103,64 @@
             app:textSize="12sp"
             app:touchDisabled="true" />
 
+        <!-- Height Detection UI -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentBottom="true"
+            android:layout_marginEnd="60dp"
+            android:layout_marginBottom="450dp"
+            android:orientation="vertical"
+            android:padding="5dp"
+            android:gravity="center">
+
+            <com.hjq.shape.view.ShapeTextView
+                android:id="@+id/tv_detected_height"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="检测高度: -- CM"
+                android:textColor="@color/white"
+                android:textSize="14sp"
+                android:padding="5dp"
+                android:visibility="gone"
+                app:shape_radius="5dp"
+                app:shape_solidColor="#552b5476" />
+
+            <com.hjq.shape.layout.ShapeLinearLayout
+                android:id="@+id/bt_capture_height"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:layout_marginTop="5dp"
+                android:alpha="0.7"
+                android:gravity="center"
+                android:visibility="gone"
+                app:shape_radius="30dp"
+                app:shape_solidColor="#8b8b8c">
+
+                <ImageView
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:src="@drawable/baseline_add_circle_24"
+                    app:tint="@color/white" />
+
+            </com.hjq.shape.layout.ShapeLinearLayout>
+
+            <com.hjq.shape.view.ShapeTextView
+                android:id="@+id/tv_height_hint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:text="请对准箱体顶部"
+                android:textColor="@color/white"
+                android:textSize="12sp"
+                android:padding="5dp"
+                android:visibility="gone"
+                android:maxWidth="150dp"
+                app:shape_radius="5dp"
+                app:shape_solidColor="#552b5476" />
+
+        </LinearLayout>
 
         <RelativeLayout
             android:layout_width="match_parent"
