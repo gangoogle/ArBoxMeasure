@@ -116,6 +116,8 @@ class ArMeasureActivity : AppCompatActivity() {
     //屏幕尺寸
     var mScreenSize = Point();
 
+
+    @SuppressLint("MissingSuperCall")
     override fun onBackPressed() {
         if (mAnchorList.size == 0) {
             finish()
