@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace 'com.rms.boxmeasure'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId "com.rms.boxmeasure"
@@ -27,6 +27,12 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            shrinkResources false
+        }
+        debug{
+            minifyEnabled  false
+            shrinkResources false
+
         }
     }
     lintOptions {
@@ -43,10 +49,9 @@ android {
     }
     buildFeatures {
         compose true
-        dataBinding  true
-        viewBinding true
-        compose  true
-        buildConfig  true
+        dataBinding false
+        viewBinding false
+        buildConfig true
     }
     composeOptions {
         kotlinCompilerExtensionVersion '1.5.6'
@@ -60,17 +65,17 @@ android {
 
 dependencies {
 
-    implementation 'androidx.core:core-ktx:1.16.0'
+    implementation 'androidx.core:core-ktx:1.17.0'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.9.0'
-    api 'androidx.appcompat:appcompat:1.7.0'
+    api 'androidx.appcompat:appcompat:1.7.1'
     implementation 'androidx.activity:activity-compose:1.10.1'
-    implementation 'androidx.compose.material3:material3:1.3.2'
-    implementation 'com.google.android.material:material:1.9.0'
+    implementation 'androidx.compose.material3:material3:1.4.0'
+    implementation 'com.google.android.material:material:1.13.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
     testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test.ext:junit:1.3.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
-    Dependency composeBom = platform("androidx.compose:compose-bom:2025.05.00")
+    Dependency composeBom = platform("androidx.compose:compose-bom:2026.01.00")
     implementation(composeBom)
     androidTestImplementation(composeBom)
     implementation("androidx.compose.material3:material3")
@@ -84,8 +89,8 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     implementation 'dev.romainguy:kotlin-math:1.6.0'
     implementation 'com.github.getActivity:ShapeView:8.5'
-    implementation 'com.github.alpbak:BoxedVerticalSeekBar:1.0'
+//    implementation 'com.github.alpbak:BoxedVerticalSeekBar:1.0'
     implementation 'com.blankj:utilcodex:1.31.1'
-    implementation "com.gorisse.thomas.sceneform:sceneform:1.21.0"
+    implementation "com.gorisse.thomas.sceneform:sceneform:1.23.0"
     implementation 'com.github.bumptech.glide:glide:4.16.0'
 }

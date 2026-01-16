@@ -1,13 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
-
-
-    <RelativeLayout
-        android:id="@+id/rl_container"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical">
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/rl_container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
 
 
         <androidx.fragment.app.FragmentContainerView
@@ -32,21 +29,21 @@
                 android:id="@+id/tv_width"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@color/white"
+                android:textColor="#ffffff"
                 android:textSize="18dp" />
 
             <TextView
                 android:id="@+id/tv_length"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@color/white"
+                android:textColor="#ffffff"
                 android:textSize="18dp" />
 
             <TextView
                 android:id="@+id/tv_height"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@color/white"
+                android:textColor="#ffffff"
                 android:textSize="18dp" />
 
         </com.hjq.shape.layout.ShapeLinearLayout>
@@ -80,28 +77,28 @@
 
         </LinearLayout>
 
-        <abak.tr.com.boxedverticalseekbar.BoxedVertical
-            android:id="@+id/sk_height_control"
-            android:layout_width="40dp"
-            android:layout_height="320dp"
-            android:layout_alignParentEnd="true"
-            android:layout_alignParentBottom="true"
-            android:layout_gravity="center"
-            android:layout_marginEnd="10dp"
-            android:layout_marginBottom="120dp"
-            android:alpha="0.8"
-            app:backgroundColor="@color/color_background"
-            app:cornerRadius="20dp"
-            app:defaultValue="0"
-            app:imageEnabled="false"
-            app:max="300"
-            app:progressColor="@color/color_progress"
-            app:step="1"
-            app:textBottomPadding="20"
-            app:textColor="#0860d3"
-            app:textEnabled="true"
-            app:textSize="12sp"
-            app:touchDisabled="true" />
+<!--        <abak.tr.com.boxedverticalseekbar.BoxedVertical-->
+<!--            android:id="@+id/sk_height_control"-->
+<!--            android:layout_width="40dp"-->
+<!--            android:layout_height="320dp"-->
+<!--            android:layout_alignParentEnd="true"-->
+<!--            android:layout_alignParentBottom="true"-->
+<!--            android:layout_gravity="center"-->
+<!--            android:layout_marginEnd="10dp"-->
+<!--            android:layout_marginBottom="120dp"-->
+<!--            android:alpha="0.8"-->
+<!--            app:backgroundColor="@color/color_background"-->
+<!--            app:cornerRadius="20dp"-->
+<!--            app:defaultValue="0"-->
+<!--            app:imageEnabled="false"-->
+<!--            app:max="300"-->
+<!--            app:progressColor="@color/color_progress"-->
+<!--            app:step="1"-->
+<!--            app:textBottomPadding="20"-->
+<!--            app:textColor="#0860d3"-->
+<!--            app:textEnabled="true"-->
+<!--            app:textSize="12sp"-->
+<!--            app:touchDisabled="true" />-->
 
         <!-- Height Detection UI -->
         <LinearLayout
@@ -120,7 +117,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="检测高度: -- CM"
-                android:textColor="@color/white"
+                android:textColor="#ffffff"
                 android:textSize="14sp"
                 android:padding="5dp"
                 android:visibility="gone"
@@ -142,7 +139,7 @@
                     android:layout_width="30dp"
                     android:layout_height="30dp"
                     android:src="@drawable/baseline_add_circle_24"
-                    app:tint="@color/white" />
+                    app:tint="#ffffff" />
 
             </com.hjq.shape.layout.ShapeLinearLayout>
 
@@ -152,7 +149,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="5dp"
                 android:text="请对准箱体顶部"
-                android:textColor="@color/white"
+                android:textColor="#ffffff"
                 android:textSize="12sp"
                 android:padding="5dp"
                 android:visibility="gone"
@@ -185,7 +182,7 @@
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:src="@drawable/baseline_keyboard_backspace_24"
-                    app:tint="@color/white" />
+                    app:tint="#ffffff" />
 
             </com.hjq.shape.layout.ShapeLinearLayout>
 
@@ -205,7 +202,7 @@
                     android:layout_width="60dp"
                     android:layout_height="60dp"
                     android:src="@drawable/baseline_add_24"
-                    app:tint="@color/white" />
+                    app:tint="#ffffff" />
 
             </com.hjq.shape.layout.ShapeLinearLayout>
 
@@ -225,7 +222,7 @@
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:src="@drawable/baseline_check_24"
-                    app:tint="@color/white" />
+                    app:tint="#ffffff" />
 
             </com.hjq.shape.layout.ShapeLinearLayout>
 
@@ -240,6 +237,4 @@
             android:alpha="0.7"
             android:src="@mipmap/dot"
             android:visibility="visible" />
-    </RelativeLayout>
-
-</layout>
+</RelativeLayout>

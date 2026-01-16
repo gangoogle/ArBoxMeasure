@@ -12,16 +12,17 @@
     <uses-feature
         android:name="android.hardware.camera.ar"
         android:required="true" />
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
 
     <application
         android:allowBackup="true"
-        android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.BoxMeasure"
+        android:theme="@style/AppTheme"
         tools:targetApi="31">
 
 
@@ -33,7 +34,7 @@
             android:name=".ArMeasureActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.BoxMeasure"></activity>
+            android:theme="@style/AppTheme" />
 
         <activity
             android:name=".FirstActivity"

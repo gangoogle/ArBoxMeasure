@@ -1,7 +1,7 @@
 package com.rms.boxmeasure
 
-import abak.tr.com.boxedverticalseekbar.BoxedVertical
-import abak.tr.com.boxedverticalseekbar.BoxedVertical.OnValuesChangeListener
+//import abak.tr.com.boxedverticalseekbar.BoxedVertical
+//import abak.tr.com.boxedverticalseekbar.BoxedVertical.OnValuesChangeListener
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
@@ -14,7 +14,6 @@ import android.view.View
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.google.ar.core.Anchor
@@ -39,7 +38,9 @@ import com.google.ar.sceneform.rendering.ViewRenderable
 import com.google.ar.sceneform.ux.ArFragment
 import com.google.ar.sceneform.ux.TransformableNode
 import com.gorisse.thomas.sceneform.scene.await
-import com.rms.boxmeasure.databinding.ActivityArMeasureBinding
+import android.widget.ImageView
+import com.hjq.shape.layout.ShapeLinearLayout
+import com.hjq.shape.view.ShapeTextView
 import kotlin.math.sqrt
 
 
@@ -54,7 +55,22 @@ class ArMeasureActivity : AppCompatActivity() {
     private val OPEN_DEPTH = false
 
     private lateinit var mArFragment: ArFragment
-    private lateinit var mBinding: ActivityArMeasureBinding
+
+    // Views
+    private lateinit var tvWidth: TextView
+    private lateinit var tvLength: TextView
+    private lateinit var tvHeight: TextView
+    private lateinit var ivBoxStep: ImageView
+    private lateinit var tvBoxStepHint: ShapeTextView
+//    private lateinit var skHeightControl: BoxedVertical
+    private lateinit var tvDetectedHeight: ShapeTextView
+    private lateinit var btCaptureHeight: ShapeLinearLayout
+    private lateinit var tvHeightHint: ShapeTextView
+    private lateinit var btReturn: ShapeLinearLayout
+    private lateinit var btRay: ShapeLinearLayout
+    private lateinit var ivRayImg: ImageView
+    private lateinit var btSure: ShapeLinearLayout
+    private lateinit var ivFpsTarget: ImageView
 
     //开始节点
     private lateinit var mStartNode: AnchorNode
@@ -128,10 +144,25 @@ class ArMeasureActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        mBinding = DataBindingUtil.setContentView<ActivityArMeasureBinding>(
-            this, R.layout.activity_ar_measure
-        )
+        setContentView(R.layout.activity_ar_measure)
+
+        // 初始化 Views
         mArFragment = (supportFragmentManager.findFragmentById(R.id.arFragment) as ArFragment)
+        tvWidth = findViewById(R.id.tv_width)
+        tvLength = findViewById(R.id.tv_length)
+        tvHeight = findViewById(R.id.tv_height)
+        ivBoxStep = findViewById(R.id.iv_box_step)
+        tvBoxStepHint = findViewById(R.id.tv_box_step_hint)
+//        skHeightControl = findViewById(R.id.sk_height_control)
+        tvDetectedHeight = findViewById(R.id.tv_detected_height)
+        btCaptureHeight = findViewById(R.id.bt_capture_height)
+        tvHeightHint = findViewById(R.id.tv_height_hint)
+        btReturn = findViewById(R.id.bt_return)
+        btRay = findViewById(R.id.bt_ray)
+        ivRayImg = findViewById(R.id.iv_ray_img)
+        btSure = findViewById(R.id.bt_sure)
+        ivFpsTarget = findViewById(R.id.iv_fps_target)
+
         //获取屏幕尺寸
         val display = windowManager.defaultDisplay
         display.getRealSize(mScreenSize)
@@ -179,7 +210,7 @@ class ArMeasureActivity : AppCompatActivity() {
         mLength = 0.0
         mDetectedHeight = null
         mIsHeightDetected = false
-        mBinding.skHeightControl.value = 0
+//        skHeightControl.value = 0
         updateSizeUI()
     }
 
@@ -400,7 +431,7 @@ class ArMeasureActivity : AppCompatActivity() {
                     if (mAnchorList.size == 3 && !OPEN_DEPTH) {
                         checkHeightPoint(hit) { isMatch, dy ->
                             if (isMatch) {
-                                mBinding.skHeightControl.value = (dy * 100 * 2).toInt()
+//                                skHeightControl.value = (dy * 100 * 2).toInt()
                             }
                         }
                     }
@@ -409,7 +440,7 @@ class ArMeasureActivity : AppCompatActivity() {
                     if (mAnchorList.size == 3 && OPEN_DEPTH) {
                         checkHeightPoint(hit) { isMatch, dy ->
                             if (isMatch) {
-                                mBinding.skHeightControl.value = (dy * 100 * 2).toInt()
+//                                skHeightControl.value = (dy * 100 * 2).toInt()
                             }
                         }
                     }
@@ -484,10 +515,10 @@ class ArMeasureActivity : AppCompatActivity() {
      */
     private fun setArListener() {
         //发射射线
-        mBinding.btRay.setOnClickListener {
+        btRay.setOnClickListener {
             sendHit()
         }
-        mBinding.btRay.postDelayed({
+        btRay.postDelayed({
             mScene.addOnUpdateListener {
                 runOnUiThread {
                     onSceneUpdate()
@@ -551,27 +582,27 @@ class ArMeasureActivity : AppCompatActivity() {
             // Update UI based on detection state
             updateHeightDetectionUI(rayHasPlane)
             if (rayHasPlane) {
-                mBinding.ivFpsTarget.setColorFilter(Color.parseColor("#66de7b"))
-                mBinding.btRay.shapeDrawableBuilder.apply {
+                ivFpsTarget.setColorFilter(Color.parseColor("#66de7b"))
+                btRay.shapeDrawableBuilder.apply {
                     solidColor = Color.parseColor("#fcfcfc")
                     intoBackground()
                 }
-                mBinding.ivRayImg.setColorFilter(Color.parseColor("#8b8b8c"))
+                ivRayImg.setColorFilter(Color.parseColor("#8b8b8c"))
             } else {
-                mBinding.ivFpsTarget.setColorFilter(Color.parseColor("#f1f3f3"))
-                mBinding.btRay.shapeDrawableBuilder.apply {
+                ivFpsTarget.setColorFilter(Color.parseColor("#f1f3f3"))
+                btRay.shapeDrawableBuilder.apply {
                     solidColor = Color.parseColor("#8b8b8c")
                     intoBackground()
                 }
-                mBinding.ivRayImg.setColorFilter(Color.parseColor("#fcfcfc"))
+                ivRayImg.setColorFilter(Color.parseColor("#fcfcfc"))
             }
         } else {
-            mBinding.ivFpsTarget.setColorFilter(Color.parseColor("#f1f3f3"))
-            mBinding.btRay.shapeDrawableBuilder.apply {
+            ivFpsTarget.setColorFilter(Color.parseColor("#f1f3f3"))
+            btRay.shapeDrawableBuilder.apply {
                 solidColor = Color.parseColor("#8b8b8c")
                 intoBackground()
             }
-            mBinding.ivRayImg.setColorFilter(Color.parseColor("#fcfcfc"))
+            ivRayImg.setColorFilter(Color.parseColor("#fcfcfc"))
         }
     }
 
@@ -579,10 +610,10 @@ class ArMeasureActivity : AppCompatActivity() {
      * 设置UI监听
      */
     private fun setUiListener() {
-        mBinding.btReturn.setOnClickListener {
+        btReturn.setOnClickListener {
             backPoint()
         }
-        mBinding.btSure.setOnClickListener {
+        btSure.setOnClickListener {
             //保存
             if (mWidth > 0 && mLength > 0 && mHeight > 0) {
                 val intent = Intent()
@@ -595,31 +626,31 @@ class ArMeasureActivity : AppCompatActivity() {
                 Toast.makeText(this, "请先测量尺寸", Toast.LENGTH_SHORT).show()
             }
         }
-        mBinding.btCaptureHeight.setOnClickListener {
+        btCaptureHeight.setOnClickListener {
             // Capture the detected height
             if (mIsHeightDetected && mDetectedHeight != null) {
                 val heightCm = mDetectedHeight!! * 100
-                mBinding.skHeightControl.value = (heightCm * SEEKBAR_TO_HEIGHT_FACTOR).toInt()
+//                skHeightControl.value = (heightCm * SEEKBAR_TO_HEIGHT_FACTOR).toInt()
                 Toast.makeText(this, "已捕获高度: ${formatHeight(mDetectedHeight!!)} CM", Toast.LENGTH_SHORT).show()
             }
         }
-        mBinding.skHeightControl.apply {
-            setOnBoxedPointsChangeListener(object : OnValuesChangeListener {
-                override fun onPointsChanged(boxedPoints: BoxedVertical?, points: Int) {
-                    val upDistance = (points).toFloat() / SEEKBAR_TO_HEIGHT_FACTOR
-                    mHeight = upDistance / 100.0
-                    mHeightNodeTextView?.text = "${formatHeight(mHeight)}CM"
-                    updateSizeUI()
-                    mHeightAnchorNode?.localScale = Vector3(0.1f, upDistance / 10f, 0.1f)
-                }
-
-                override fun onStartTrackingTouch(boxedPoints: BoxedVertical?) {
-                }
-
-                override fun onStopTrackingTouch(boxedPoints: BoxedVertical?) {
-                }
-            })
-        }
+//        skHeightControl.apply {
+//            setOnBoxedPointsChangeListener(object : OnValuesChangeListener {
+//                override fun onPointsChanged(boxedPoints: BoxedVertical?, points: Int) {
+//                    val upDistance = (points).toFloat() / SEEKBAR_TO_HEIGHT_FACTOR
+//                    mHeight = upDistance / 100.0
+//                    mHeightNodeTextView?.text = "${formatHeight(mHeight)}CM"
+//                    updateSizeUI()
+//                    mHeightAnchorNode?.localScale = Vector3(0.1f, upDistance / 10f, 0.1f)
+//                }
+//
+//                override fun onStartTrackingTouch(boxedPoints: BoxedVertical?) {
+//                }
+//
+//                override fun onStopTrackingTouch(boxedPoints: BoxedVertical?) {
+//                }
+//            })
+//        }
     }
 
     /**
@@ -627,40 +658,40 @@ class ArMeasureActivity : AppCompatActivity() {
      */
     @SuppressLint("SetTextI18n")
     private fun updateSizeUI() {
-        mBinding.tvWidth.text = "宽：${String.format("%.1f", mWidth * 100)}CM"
-        mBinding.tvLength.text = "长：${String.format("%.1f", mLength * 100)}CM"
-        mBinding.tvHeight.text = "高：${formatHeight(mHeight)}CM"
+        tvWidth.text = "宽：${String.format("%.1f", mWidth * 100)}CM"
+        tvLength.text = "长：${String.format("%.1f", mLength * 100)}CM"
+        tvHeight.text = "高：${formatHeight(mHeight)}CM"
         if (mAnchorList.size == 0) {
-            mBinding.btReturn.visibility = View.INVISIBLE
+            btReturn.visibility = View.INVISIBLE
         } else {
-            mBinding.btReturn.visibility = View.VISIBLE
+            btReturn.visibility = View.VISIBLE
         }
         if (mAnchorList.size >= 3) {
-            mBinding.btSure.visibility = View.VISIBLE
-            mBinding.skHeightControl.visibility = View.VISIBLE
+            btSure.visibility = View.VISIBLE
+//            skHeightControl.visibility = View.VISIBLE
         } else {
-            mBinding.btSure.visibility = View.INVISIBLE
-            mBinding.skHeightControl.visibility = View.INVISIBLE
+            btSure.visibility = View.INVISIBLE
+//            skHeightControl.visibility = View.INVISIBLE
         }
         when (mAnchorList.size) {
             0 -> {
-                Glide.with(this).load(R.mipmap.ic_box_step).into(mBinding.ivBoxStep)
-                mBinding.tvBoxStepHint.text = "瞄准第一个底角"
+                Glide.with(this).load(R.mipmap.ic_box_step).into(ivBoxStep)
+                tvBoxStepHint.text = "瞄准第一个底角"
             }
 
             1 -> {
-                Glide.with(this).load(R.mipmap.ic_box_step_2).into(mBinding.ivBoxStep)
-                mBinding.tvBoxStepHint.text = "瞄准第二个底角"
+                Glide.with(this).load(R.mipmap.ic_box_step_2).into(ivBoxStep)
+                tvBoxStepHint.text = "瞄准第二个底角"
             }
 
             2 -> {
-                Glide.with(this).load(R.mipmap.ic_box_step_3).into(mBinding.ivBoxStep)
-                mBinding.tvBoxStepHint.text = "瞄准第三个底角"
+                Glide.with(this).load(R.mipmap.ic_box_step_3).into(ivBoxStep)
+                tvBoxStepHint.text = "瞄准第三个底角"
             }
 
             3 -> {
-                Glide.with(this).load(R.mipmap.ic_box_step_4).into(mBinding.ivBoxStep)
-                mBinding.tvBoxStepHint.text = "定位箱体高度"
+                Glide.with(this).load(R.mipmap.ic_box_step_4).into(ivBoxStep)
+                tvBoxStepHint.text = "定位箱体高度"
             }
 
         }
@@ -672,35 +703,35 @@ class ArMeasureActivity : AppCompatActivity() {
     private fun updateHeightDetectionUI(hasValidPoint: Boolean) {
         if (mAnchorList.size < 3) {
             // Hide height detection UI when not in height measurement mode
-            mBinding.tvDetectedHeight.visibility = View.GONE
-            mBinding.btCaptureHeight.visibility = View.GONE
-            mBinding.tvHeightHint.visibility = View.GONE
+            tvDetectedHeight.visibility = View.GONE
+            btCaptureHeight.visibility = View.GONE
+            tvHeightHint.visibility = View.GONE
             return
         }
 
         // Show height detection UI elements
-        mBinding.tvDetectedHeight.visibility = View.VISIBLE
-        mBinding.btCaptureHeight.visibility = View.VISIBLE
-        mBinding.tvHeightHint.visibility = View.VISIBLE
+        tvDetectedHeight.visibility = View.VISIBLE
+        btCaptureHeight.visibility = View.VISIBLE
+        tvHeightHint.visibility = View.VISIBLE
 
         if (mIsHeightDetected && mDetectedHeight != null) {
             // Valid height detected
             val heightCm = formatHeight(mDetectedHeight!!)
-            mBinding.tvDetectedHeight.text = "检测高度: $heightCm CM"
-            mBinding.tvHeightHint.text = "已检测到高度 ${heightCm} CM，点击捕获"
-            mBinding.btCaptureHeight.isEnabled = true
-            mBinding.btCaptureHeight.alpha = 1.0f
-            mBinding.btCaptureHeight.shapeDrawableBuilder.apply {
+            tvDetectedHeight.text = "检测高度: $heightCm CM"
+            tvHeightHint.text = "已检测到高度 ${heightCm} CM，点击捕获"
+            btCaptureHeight.isEnabled = true
+            btCaptureHeight.alpha = 1.0f
+            btCaptureHeight.shapeDrawableBuilder.apply {
                 solidColor = Color.parseColor("#66de7b")
                 intoBackground()
             }
         } else {
             // No valid height detected
-            mBinding.tvDetectedHeight.text = "检测高度: -- CM"
-            mBinding.tvHeightHint.text = "请对准箱体顶部或使用滑动条"
-            mBinding.btCaptureHeight.isEnabled = false
-            mBinding.btCaptureHeight.alpha = 0.5f
-            mBinding.btCaptureHeight.shapeDrawableBuilder.apply {
+            tvDetectedHeight.text = "检测高度: -- CM"
+            tvHeightHint.text = "请对准箱体顶部或使用滑动条"
+            btCaptureHeight.isEnabled = false
+            btCaptureHeight.alpha = 0.5f
+            btCaptureHeight.shapeDrawableBuilder.apply {
                 solidColor = Color.parseColor("#8b8b8c")
                 intoBackground()
             }
