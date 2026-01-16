@@ -62,7 +62,9 @@ class ArMeasureActivity : AppCompatActivity() {
     private lateinit var tvHeight: TextView
     private lateinit var ivBoxStep: ImageView
     private lateinit var tvBoxStepHint: ShapeTextView
-//    private lateinit var skHeightControl: BoxedVertical
+    private lateinit var skHeightControl: android.widget.SeekBar
+    private lateinit var llHeightControlContainer: ShapeLinearLayout
+    private lateinit var tvHeightValue: TextView
     private lateinit var tvDetectedHeight: ShapeTextView
     private lateinit var btCaptureHeight: ShapeLinearLayout
     private lateinit var tvHeightHint: ShapeTextView
@@ -153,7 +155,9 @@ class ArMeasureActivity : AppCompatActivity() {
         tvHeight = findViewById(R.id.tv_height)
         ivBoxStep = findViewById(R.id.iv_box_step)
         tvBoxStepHint = findViewById(R.id.tv_box_step_hint)
-//        skHeightControl = findViewById(R.id.sk_height_control)
+        skHeightControl = findViewById(R.id.sk_height_control)
+        llHeightControlContainer = findViewById(R.id.ll_height_control_container)
+        tvHeightValue = findViewById(R.id.tv_height_value)
         tvDetectedHeight = findViewById(R.id.tv_detected_height)
         btCaptureHeight = findViewById(R.id.bt_capture_height)
         tvHeightHint = findViewById(R.id.tv_height_hint)
@@ -210,7 +214,7 @@ class ArMeasureActivity : AppCompatActivity() {
         mLength = 0.0
         mDetectedHeight = null
         mIsHeightDetected = false
-//        skHeightControl.value = 0
+        skHeightControl.progress = 0
         updateSizeUI()
     }
 
@@ -431,7 +435,7 @@ class ArMeasureActivity : AppCompatActivity() {
                     if (mAnchorList.size == 3 && !OPEN_DEPTH) {
                         checkHeightPoint(hit) { isMatch, dy ->
                             if (isMatch) {
-//                                skHeightControl.value = (dy * 100 * 2).toInt()
+                                skHeightControl.progress = (dy * 100 * 2).toInt()
                             }
                         }
                     }
@@ -440,7 +444,7 @@ class ArMeasureActivity : AppCompatActivity() {
                     if (mAnchorList.size == 3 && OPEN_DEPTH) {
                         checkHeightPoint(hit) { isMatch, dy ->
                             if (isMatch) {
-//                                skHeightControl.value = (dy * 100 * 2).toInt()
+                                skHeightControl.progress = (dy * 100 * 2).toInt()
                             }
                         }
                     }
@@ -630,27 +634,28 @@ class ArMeasureActivity : AppCompatActivity() {
             // Capture the detected height
             if (mIsHeightDetected && mDetectedHeight != null) {
                 val heightCm = mDetectedHeight!! * 100
-//                skHeightControl.value = (heightCm * SEEKBAR_TO_HEIGHT_FACTOR).toInt()
+                skHeightControl.progress = (heightCm * SEEKBAR_TO_HEIGHT_FACTOR).toInt()
                 Toast.makeText(this, "已捕获高度: ${formatHeight(mDetectedHeight!!)} CM", Toast.LENGTH_SHORT).show()
             }
         }
-//        skHeightControl.apply {
-//            setOnBoxedPointsChangeListener(object : OnValuesChangeListener {
-//                override fun onPointsChanged(boxedPoints: BoxedVertical?, points: Int) {
-//                    val upDistance = (points).toFloat() / SEEKBAR_TO_HEIGHT_FACTOR
-//                    mHeight = upDistance / 100.0
-//                    mHeightNodeTextView?.text = "${formatHeight(mHeight)}CM"
-//                    updateSizeUI()
-//                    mHeightAnchorNode?.localScale = Vector3(0.1f, upDistance / 10f, 0.1f)
-//                }
-//
-//                override fun onStartTrackingTouch(boxedPoints: BoxedVertical?) {
-//                }
-//
-//                override fun onStopTrackingTouch(boxedPoints: BoxedVertical?) {
-//                }
-//            })
-//        }
+
+        // SeekBar 监听器
+        skHeightControl.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
+                val upDistance = progress.toFloat() / SEEKBAR_TO_HEIGHT_FACTOR
+                mHeight = upDistance / 100.0
+                mHeightNodeTextView?.text = "${formatHeight(mHeight)}CM"
+                tvHeightValue.text = String.format("%.1f", upDistance)
+                updateSizeUI()
+                mHeightAnchorNode?.localScale = Vector3(0.1f, upDistance / 10f, 0.1f)
+            }
+
+            override fun onStartTrackingTouch(seekBar: android.widget.SeekBar?) {
+            }
+
+            override fun onStopTrackingTouch(seekBar: android.widget.SeekBar?) {
+            }
+        })
     }
 
     /**
@@ -668,10 +673,10 @@ class ArMeasureActivity : AppCompatActivity() {
         }
         if (mAnchorList.size >= 3) {
             btSure.visibility = View.VISIBLE
-//            skHeightControl.visibility = View.VISIBLE
+            llHeightControlContainer.visibility = View.VISIBLE
         } else {
             btSure.visibility = View.INVISIBLE
-//            skHeightControl.visibility = View.INVISIBLE
+            llHeightControlContainer.visibility = View.INVISIBLE
         }
         when (mAnchorList.size) {
             0 -> {

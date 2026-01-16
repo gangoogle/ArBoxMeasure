@@ -77,28 +77,52 @@
 
         </LinearLayout>
 
-<!--        <abak.tr.com.boxedverticalseekbar.BoxedVertical-->
-<!--            android:id="@+id/sk_height_control"-->
-<!--            android:layout_width="40dp"-->
-<!--            android:layout_height="320dp"-->
-<!--            android:layout_alignParentEnd="true"-->
-<!--            android:layout_alignParentBottom="true"-->
-<!--            android:layout_gravity="center"-->
-<!--            android:layout_marginEnd="10dp"-->
-<!--            android:layout_marginBottom="120dp"-->
-<!--            android:alpha="0.8"-->
-<!--            app:backgroundColor="@color/color_background"-->
-<!--            app:cornerRadius="20dp"-->
-<!--            app:defaultValue="0"-->
-<!--            app:imageEnabled="false"-->
-<!--            app:max="300"-->
-<!--            app:progressColor="@color/color_progress"-->
-<!--            app:step="1"-->
-<!--            app:textBottomPadding="20"-->
-<!--            app:textColor="#0860d3"-->
-<!--            app:textEnabled="true"-->
-<!--            app:textSize="12sp"-->
-<!--            app:touchDisabled="true" />-->
+        <!-- Vertical SeekBar for Height Control -->
+        <com.hjq.shape.layout.ShapeLinearLayout
+            android:id="@+id/ll_height_control_container"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentBottom="true"
+            android:layout_marginEnd="10dp"
+            android:layout_marginBottom="120dp"
+            android:orientation="vertical"
+            android:padding="10dp"
+            android:visibility="gone"
+            android:gravity="center"
+            app:shape_radius="20dp"
+            app:shape_solidColor="#CC2b5476">
+
+            <TextView
+                android:id="@+id/tv_height_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0"
+                android:textColor="#0860d3"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="5dp" />
+
+            <SeekBar
+                android:id="@+id/sk_height_control"
+                android:layout_width="320dp"
+                android:layout_height="40dp"
+                android:max="300"
+                android:progress="0"
+                android:rotation="270"
+                android:alpha="0.9"
+                android:progressTint="#0860d3"
+                android:thumbTint="#0860d3" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="高度(CM)"
+                android:textColor="#ffffff"
+                android:textSize="12sp"
+                android:layout_marginTop="5dp" />
+
+        </com.hjq.shape.layout.ShapeLinearLayout>
 
         <!-- Height Detection UI -->
         <LinearLayout
