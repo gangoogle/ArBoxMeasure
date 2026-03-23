@@ -19,10 +19,12 @@ import com.bumptech.glide.Glide
 import com.google.ar.core.Anchor
 import com.google.ar.core.Config
 import com.google.ar.core.DepthPoint
+import com.google.ar.core.Frame
 import com.google.ar.core.HitResult
 import com.google.ar.core.Plane
 import com.google.ar.core.Pose
-import com.google.ar.core.Trackable
+import com.google.ar.core.TrackingState
+import com.google.ar.core.Point as ArPoint
 import com.google.ar.sceneform.AnchorNode
 import com.google.ar.sceneform.ArSceneView
 import com.google.ar.sceneform.Node
@@ -41,6 +43,7 @@ import com.gorisse.thomas.sceneform.scene.await
 import android.widget.ImageView
 import com.hjq.shape.layout.ShapeLinearLayout
 import com.hjq.shape.view.ShapeTextView
+import kotlin.math.abs
 import kotlin.math.sqrt
 
 
@@ -52,7 +55,7 @@ class ArMeasureActivity : AppCompatActivity() {
     /**
      * 启用深度信息
      */
-    private val OPEN_DEPTH = false
+    private var mDepthModeEnabled = false
 
     private lateinit var mArFragment: ArFragment
 
@@ -100,6 +103,15 @@ class ArMeasureActivity : AppCompatActivity() {
     //是否检测到有效高度
     private var mIsHeightDetected: Boolean = false
 
+    //稳定检测到的高度候选值
+    private var mHeightCandidate: Double? = null
+
+    //稳定帧数
+    private var mHeightCandidateStableFrames: Int = 0
+
+    //候选高度短暂丢失的帧数
+    private var mHeightCandidateMissingFrames: Int = 0
+
     //长
     private var mLength: Double = 0.0
 
@@ -118,6 +130,34 @@ class ArMeasureActivity : AppCompatActivity() {
 
     //SeekBar值到高度(米)的转换系数: seekBarValue = height(cm) * 2
     private val SEEKBAR_TO_HEIGHT_FACTOR = 2
+
+    //高度识别稳定帧数
+    private val HEIGHT_STABLE_FRAME_COUNT = 4
+
+    //短暂丢帧时保留识别结果，避免准星轻微抖动立即失效
+    private val HEIGHT_MISSING_FRAME_TOLERANCE = 6
+
+    //高度候选波动容忍值(米)
+    private val HEIGHT_STABLE_TOLERANCE_METERS = 0.015
+
+    //第三个底角允许的直角偏差
+    private val RIGHT_ANGLE_TOLERANCE_DEGREES = 15.0
+
+    //有效 hit 距离范围
+    private val MIN_HIT_DISTANCE_METERS = 0.12f
+    private val MAX_HIT_DISTANCE_METERS = 5.0f
+
+    //高度识别距离阈值
+    private val MIN_HEIGHT_EDGE_DISTANCE_METERS = 0.025f
+    private val MAX_HEIGHT_EDGE_DISTANCE_METERS = 0.08f
+    private val HEIGHT_EDGE_DISTANCE_RATIO = 0.18f
+    private val MIN_TOP_SURFACE_MARGIN_METERS = 0.03f
+    private val MAX_TOP_SURFACE_MARGIN_METERS = 0.10f
+    private val TOP_SURFACE_MARGIN_RATIO = 0.12f
+
+    //避免每帧重复刷新相同 UI
+    private var mLastRayHasTarget: Boolean? = null
+    private var mLastHeightUiState: String? = null
 
     //结束节点列表
     private val mEndNodeArray = arrayListOf<Node>()
@@ -185,6 +225,7 @@ class ArMeasureActivity : AppCompatActivity() {
     private fun backPoint() {
         while (mAnchorList.size > 0) {
             if (mAnchorList.size == 1) {
+                mAnchorList.forEach { it.anchor.detach() }
                 mAnchorList.clear()
                 mLineNodeArray.clear()
                 mSphereNodeArray.clear()
@@ -192,14 +233,14 @@ class ArMeasureActivity : AppCompatActivity() {
                 mEndNodeArray.clear()
                 mScene.removeChild(mStartNode)
             } else if (mAnchorList.size == 2) {
-                mAnchorList.removeAt(mAnchorList.size - 1)
+                mAnchorList.removeAt(mAnchorList.size - 1).anchor.detach()
                 val index = mStartNodeArray.size - 1
                 mSphereNodeArray[index].removeChild(mLineNodeArray.removeAt(index))
                 mEndNodeArray[index].removeChild(mSphereNodeArray.removeAt(index + 1))
                 mScene.removeChild(mStartNodeArray.removeAt(index))
                 mScene.removeChild(mEndNodeArray.removeAt(index))
             } else if (mAnchorList.size == 3) {
-                mAnchorList.removeAt(mAnchorList.size - 1)
+                mAnchorList.removeAt(mAnchorList.size - 1).anchor.detach()
                 val index = mStartNodeArray.size - 1
                 mSphereNodeArray[index].removeChild(mLineNodeArray.removeAt(index))
                 mEndNodeArray[index].removeChild(mSphereNodeArray.removeAt(index + 1))
@@ -212,8 +253,7 @@ class ArMeasureActivity : AppCompatActivity() {
         mWidth = 0.0
         mHeight = 0.0
         mLength = 0.0
-        mDetectedHeight = null
-        mIsHeightDetected = false
+        resetHeightDetectionState()
         skHeightControl.progress = 0
         updateSizeUI()
     }
@@ -257,12 +297,7 @@ class ArMeasureActivity : AppCompatActivity() {
                 worldPosition = Vector3.add(firstWorldPosition, secondWorldPosition).scaled(0.5f)
                 worldRotation = rotationFromAToB
             }
-            mLineNodeArray.add(Node().apply {
-                setParent(firstAnchorNode)
-                renderable = lineMode
-                worldPosition = Vector3.add(firstWorldPosition, secondWorldPosition).scaled(0.5f)
-                worldRotation = rotationFromAToB
-            })
+            mLineNodeArray.add(lineNode)
             ViewRenderable.builder().setView(this@ArMeasureActivity, R.layout.renderable_text)
                 .build().thenAccept { it ->
                     (it.view as TextView).text = "${String.format("%.1f", length * 100)}CM"
@@ -284,23 +319,20 @@ class ArMeasureActivity : AppCompatActivity() {
         mArFragment.apply {
             setOnViewCreatedListener { arSceneView ->
                 arSceneView.setFrameRateFactor(SceneView.FrameRate.FULL)
-                //启动深度信息
-                if (OPEN_DEPTH) {
-                    arSceneView.cameraStream.depthOcclusionMode =
-                        CameraStream.DepthOcclusionMode.DEPTH_OCCLUSION_ENABLED
-                }
+                updateDepthRendering(arSceneView, false)
             }
             setOnSessionConfigurationListener { session, config ->
                 config.setInstantPlacementMode(Config.InstantPlacementMode.DISABLED)
                 config.setPlaneFindingMode(Config.PlaneFindingMode.HORIZONTAL)
                 config.setFocusMode(Config.FocusMode.AUTO)
                 config.setLightEstimationMode(Config.LightEstimationMode.DISABLED)
-                //depth深度信息
-                if (OPEN_DEPTH) {
-                    if (session.isDepthModeSupported(Config.DepthMode.AUTOMATIC)) {
-                        config.depthMode = Config.DepthMode.AUTOMATIC
-                    }
+                mDepthModeEnabled = session.isDepthModeSupported(Config.DepthMode.AUTOMATIC)
+                config.depthMode = if (mDepthModeEnabled) {
+                    Config.DepthMode.AUTOMATIC
+                } else {
+                    Config.DepthMode.DISABLED
                 }
+                updateDepthRendering(mSceneView, mDepthModeEnabled)
             }
 
         }
@@ -311,25 +343,19 @@ class ArMeasureActivity : AppCompatActivity() {
      * 计算三个向量的夹角
      */
     private fun isAngleCloseTo90Degrees(poseC: Pose, poseA: Pose, poseB: Pose): Boolean {
-        // 计算向量CB和向量AB的夹角
-        var vectorCB =
-            Vector3(poseC.tx() - poseB.tx(), poseC.ty() - poseB.ty(), poseC.tz() - poseB.tz())
-        var vectorAB =
-            Vector3(poseA.tx() - poseB.tx(), poseA.ty() - poseB.ty(), poseA.tz() - poseB.tz())
+        var vectorCB = Vector3(poseC.tx() - poseB.tx(), 0.0f, poseC.tz() - poseB.tz())
+        var vectorAB = Vector3(poseA.tx() - poseB.tx(), 0.0f, poseA.tz() - poseB.tz())
 
-        // 规范化向量
+        if (vectorCB.length() <= 0.001f || vectorAB.length() <= 0.001f) {
+            return false
+        }
+
         vectorCB = vectorCB.normalized()
         vectorAB = vectorAB.normalized()
 
-        // 计算夹角的余弦值
-        val dotProduct = Vector3.dot(vectorAB, vectorCB)
-        val angleCos = Math.abs(dotProduct)
-        // 判断夹角是否接近90度（余弦值在一个范围内）
-        val thresholdCos = Math.cos(Math.toRadians(5.0)).toFloat() // 5度范围内认为接近90度
-        if (angleCos >= thresholdCos) {
-            Toast.makeText(this, "角度->t$angleCos", Toast.LENGTH_SHORT).show()
-        }
-        return angleCos >= thresholdCos
+        val angleCos = abs(Vector3.dot(vectorAB, vectorCB))
+        val thresholdCos = Math.sin(Math.toRadians(RIGHT_ANGLE_TOLERANCE_DEGREES)).toFloat()
+        return angleCos <= thresholdCos
     }
 
 
@@ -350,7 +376,18 @@ class ArMeasureActivity : AppCompatActivity() {
         if (mAnchorList.size >= 3) {
             return
         }
-        val anchorInfoBean = AnchorInfoBean("", hitResult.createAnchor(), 0.0)
+        val anchor = hitResult.createAnchor()
+        if (mAnchorList.size == 2 && !isAngleCloseTo90Degrees(
+                poseC = anchor.pose,
+                poseA = mAnchorList[0].anchor.pose,
+                poseB = mAnchorList[1].anchor.pose
+            )
+        ) {
+            anchor.detach()
+            Toast.makeText(this, "第三个底角需与前两点接近直角", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val anchorInfoBean = AnchorInfoBean("", anchor, 0.0)
         mAnchorList.add(anchorInfoBean)
         if (mAnchorList.size > 1) {
             val endAnchor = mAnchorList[mAnchorList.size - 1].anchor
@@ -395,7 +432,7 @@ class ArMeasureActivity : AppCompatActivity() {
                     }
             }
         } else {
-            mStartNode = AnchorNode(hitResult.createAnchor())
+            mStartNode = AnchorNode(anchor)
             mStartNode.setParent(mArFragment.arSceneView.scene)
             MaterialFactory.makeOpaqueWithColor(
                 this@ArMeasureActivity,
@@ -416,40 +453,22 @@ class ArMeasureActivity : AppCompatActivity() {
      * 发送hit
      */
     private fun sendHit() {
-        var ray = mScene.camera!!.screenPointToRay(
-            mScreenSize.x / 2f, mScreenSize.y / 2f
-        )
-        Log.d(TAG, "ray: $ray")
-        val test = mSceneView.arFrame?.hitTest(((mScreenSize.x / 2f)), (mScreenSize.y / 2f))
-        Log.d(TAG, "sendHit:test ${test?.size}")
-        run foo@{
-            test?.forEach { hit ->
-                val trackable: Trackable = hit.trackable
-                if (trackable is Plane && trackable.isPoseInPolygon(hit.getHitPose())) {
-                    Log.d(TAG, "sendHit:plane ${hit.hitPose}")
-                    if (mAnchorList.size < 3) {
-                        onTap(hit, trackable)
-                        return@foo
-                    }
-                } else if (trackable is com.google.ar.core.Point) {
-                    if (mAnchorList.size == 3 && !OPEN_DEPTH) {
-                        checkHeightPoint(hit) { isMatch, dy ->
-                            if (isMatch) {
-                                skHeightControl.progress = (dy * 100 * 2).toInt()
-                            }
-                        }
-                    }
-                } else if (trackable is DepthPoint) {
-
-                    if (mAnchorList.size == 3 && OPEN_DEPTH) {
-                        checkHeightPoint(hit) { isMatch, dy ->
-                            if (isMatch) {
-                                skHeightControl.progress = (dy * 100 * 2).toInt()
-                            }
-                        }
-                    }
-                }
+        val frame = mSceneView.arFrame ?: return
+        if (frame.camera.trackingState != TrackingState.TRACKING) {
+            return
+        }
+        val hits = getCenterHits(frame)
+        if (mAnchorList.size < 3) {
+            hits.firstOrNull { hit ->
+                val trackable = hit.trackable
+                trackable is Plane && isValidPlaneHit(hit, trackable)
+            }?.let { hit ->
+                onTap(hit, hit.trackable as Plane)
             }
+            return
+        }
+        (findBestHeightCandidate(hits) ?: mDetectedHeight)?.let { heightMeters ->
+            skHeightControl.progress = (heightMeters * 100 * SEEKBAR_TO_HEIGHT_FACTOR).toInt()
         }
     }
 
@@ -462,6 +481,9 @@ class ArMeasureActivity : AppCompatActivity() {
         val vectorAB = Vector3(pointB.tx() - pointA.tx(), 0.0f, pointB.tz() - pointA.tz())
 
         val lengthAB = sqrt(vectorAB.x * vectorAB.x + vectorAB.z * vectorAB.z)
+        if (lengthAB <= 0.0001f) {
+            return Float.MAX_VALUE
+        }
 
         val dotProduct = vectorAC.x * vectorAB.x + vectorAC.z * vectorAB.z
         val normalizedDotProduct = dotProduct / (lengthAB * lengthAB)
@@ -480,20 +502,19 @@ class ArMeasureActivity : AppCompatActivity() {
     /**
      * 检查高度点
      */
-    private fun checkHeightPoint(
-        hit: HitResult, callBack: (isMatch: Boolean, dy: Double) -> Unit
-    ) {
-        //通过特征点寻找高度
+    private fun getHeightCandidate(hit: HitResult): Double? {
         Log.d(TAG, "sendHit:point ${hit.hitPose}")
+        if (mAnchorList.size < 3 || !isValidHitDistance(hit) || hit.trackable.trackingState != TrackingState.TRACKING) {
+            return null
+        }
         val hitPoseHeight = hit.hitPose
         val poseA = mAnchorList[0].anchor.pose
         val poseB = mAnchorList[1].anchor.pose
         val poseC = mAnchorList[2].anchor.pose
-        val dx = hitPoseHeight.tx() - poseB.tx()
         val dy = hitPoseHeight.ty() - poseB.ty()
-        val dz = hitPoseHeight.tz() - poseB.tz()
         val distanceAB = calculateDistanceToSegment(poseA, poseB, hitPoseHeight)
         val distanceBC = calculateDistanceToSegment(poseC, poseB, hitPoseHeight)
+        val threshold = getHeightEdgeThreshold()
         Log.d(
             TAG,
             "distance  to poseAB  ${distanceAB}"
@@ -502,15 +523,16 @@ class ArMeasureActivity : AppCompatActivity() {
             TAG,
             "distance  to poseBC  ${distanceBC}"
         )
-        if ( dy <= 0f) {
-            callBack.invoke(false, 0.0)
-            return
+        if (dy <= 0f) {
+            return null
         }
-        if ((distanceAB <= 0.12f && distanceAB >= -0.12f) || (distanceBC <= 0.12f && distanceBC >= -0.12f)) {
-            callBack.invoke(true, dy.toDouble(), )
-        } else {
-            callBack.invoke(false, 0.0)
+        if (!isWithinTopSurfaceProjection(hitPoseHeight)) {
+            return null
         }
+        if (distanceAB <= threshold || distanceBC <= threshold) {
+            return dy.toDouble()
+        }
+        return null
     }
 
 
@@ -539,75 +561,30 @@ class ArMeasureActivity : AppCompatActivity() {
      * 场景更新
      */
     private fun onSceneUpdate() {
-        val hasPlane: Boolean = mSceneView.hasTrackedPlane()
-        if (hasPlane) {
-            var ray = mScene.camera!!.screenPointToRay(
-                mScreenSize.x / 2f, mScreenSize.y / 2f
-            )
-            val test = mSceneView.arFrame?.hitTest(
-                ((mScreenSize.x / 2f)), (mScreenSize.y / 2f)
-            )
-            var rayHasPlane = false
-            test?.forEach { hit ->
-                val trackable: Trackable = hit.trackable
-                if (trackable is Plane && trackable.isPoseInPolygon(hit.getHitPose())) {
-                    if (mAnchorList.size < 3) {
-                        //如果锚点小于3，就寻找平面
-                        rayHasPlane = true
-                    }
-                } else if (trackable is com.google.ar.core.Point) {
-                    //如果已经有三个锚点了，就寻找特征点
-                    if (mAnchorList.size == 3 && !OPEN_DEPTH) {
-                        checkHeightPoint(hit) { isMatch, dy ->
-                            if (isMatch) {
-                                rayHasPlane = true
-                                mDetectedHeight = dy
-                                mIsHeightDetected = true
-                            }
-                        }
-                    }
-                } else if (trackable is DepthPoint) {
-                    if (mAnchorList.size == 3 && OPEN_DEPTH) {
-                        checkHeightPoint(hit) { isMatch, dy ->
-                            if (isMatch) {
-                                rayHasPlane = true
-                                mDetectedHeight = dy
-                                mIsHeightDetected = true
-                            }
-                        }
-                    }
-                }
+        val frame = mSceneView.arFrame
+        if (frame == null || frame.camera.trackingState != TrackingState.TRACKING) {
+            if (mAnchorList.size >= 3) {
+                resetHeightDetectionState()
             }
-            if (!rayHasPlane && mAnchorList.size == 3) {
-                // Reset detection state when no valid height point found
-                mIsHeightDetected = false
-                mDetectedHeight = null
-            }
-            // Update UI based on detection state
-            updateHeightDetectionUI(rayHasPlane)
-            if (rayHasPlane) {
-                ivFpsTarget.setColorFilter(Color.parseColor("#66de7b"))
-                btRay.shapeDrawableBuilder.apply {
-                    solidColor = Color.parseColor("#fcfcfc")
-                    intoBackground()
-                }
-                ivRayImg.setColorFilter(Color.parseColor("#8b8b8c"))
-            } else {
-                ivFpsTarget.setColorFilter(Color.parseColor("#f1f3f3"))
-                btRay.shapeDrawableBuilder.apply {
-                    solidColor = Color.parseColor("#8b8b8c")
-                    intoBackground()
-                }
-                ivRayImg.setColorFilter(Color.parseColor("#fcfcfc"))
+            updateHeightDetectionUI()
+            updateRayUi(false)
+            return
+        }
+        val hits = getCenterHits(frame)
+        val rayHasTarget = if (mAnchorList.size < 3) {
+            hits.any { hit ->
+                val trackable = hit.trackable
+                trackable is Plane && isValidPlaneHit(hit, trackable)
             }
         } else {
-            ivFpsTarget.setColorFilter(Color.parseColor("#f1f3f3"))
-            btRay.shapeDrawableBuilder.apply {
-                solidColor = Color.parseColor("#8b8b8c")
-                intoBackground()
-            }
-            ivRayImg.setColorFilter(Color.parseColor("#fcfcfc"))
+            val candidateHeight = findBestHeightCandidate(hits)
+            updateStableHeightCandidate(candidateHeight)
         }
+        if (mAnchorList.size < 3) {
+            resetHeightDetectionState()
+        }
+        updateHeightDetectionUI()
+        updateRayUi(rayHasTarget)
     }
 
     /**
@@ -705,22 +682,33 @@ class ArMeasureActivity : AppCompatActivity() {
     /**
      * 更新高度检测UI反馈
      */
-    private fun updateHeightDetectionUI(hasValidPoint: Boolean) {
+    private fun updateHeightDetectionUI() {
         if (mAnchorList.size < 3) {
-            // Hide height detection UI when not in height measurement mode
+            if (mLastHeightUiState == "hidden") {
+                return
+            }
+            mLastHeightUiState = "hidden"
             tvDetectedHeight.visibility = View.GONE
             btCaptureHeight.visibility = View.GONE
             tvHeightHint.visibility = View.GONE
             return
         }
 
-        // Show height detection UI elements
+        val currentState = if (mIsHeightDetected && mDetectedHeight != null) {
+            "detected:${formatHeight(mDetectedHeight!!)}"
+        } else {
+            "searching"
+        }
+        if (mLastHeightUiState == currentState) {
+            return
+        }
+        mLastHeightUiState = currentState
+
         tvDetectedHeight.visibility = View.VISIBLE
         btCaptureHeight.visibility = View.VISIBLE
         tvHeightHint.visibility = View.VISIBLE
 
         if (mIsHeightDetected && mDetectedHeight != null) {
-            // Valid height detected
             val heightCm = formatHeight(mDetectedHeight!!)
             tvDetectedHeight.text = "检测高度: $heightCm CM"
             tvHeightHint.text = "已检测到高度 ${heightCm} CM，点击捕获"
@@ -740,6 +728,171 @@ class ArMeasureActivity : AppCompatActivity() {
                 solidColor = Color.parseColor("#8b8b8c")
                 intoBackground()
             }
+        }
+    }
+
+    private fun updateDepthRendering(sceneView: ArSceneView, enabled: Boolean) {
+        sceneView.cameraStream.depthOcclusionMode = if (enabled) {
+            CameraStream.DepthOcclusionMode.DEPTH_OCCLUSION_ENABLED
+        } else {
+            CameraStream.DepthOcclusionMode.DEPTH_OCCLUSION_DISABLED
+        }
+    }
+
+    private fun getCenterHits(frame: Frame): List<HitResult> {
+        return frame.hitTest(mScreenSize.x / 2f, mScreenSize.y / 2f)
+    }
+
+    private fun isValidHitDistance(hit: HitResult): Boolean {
+        return hit.distance >= MIN_HIT_DISTANCE_METERS && hit.distance <= MAX_HIT_DISTANCE_METERS
+    }
+
+    private fun isValidPlaneHit(hit: HitResult, plane: Plane): Boolean {
+        return plane.trackingState == TrackingState.TRACKING &&
+            isValidHitDistance(hit) &&
+            plane.isPoseInPolygon(hit.hitPose)
+    }
+
+    private fun getHeightEdgeThreshold(): Float {
+        val referenceEdge = listOf(mWidth, mLength)
+            .filter { it > 0.0 }
+            .minOrNull()
+            ?.toFloat()
+            ?: 0.20f
+        return (referenceEdge * HEIGHT_EDGE_DISTANCE_RATIO)
+            .coerceIn(MIN_HEIGHT_EDGE_DISTANCE_METERS, MAX_HEIGHT_EDGE_DISTANCE_METERS)
+    }
+
+    private fun getTopSurfaceProjectionMargin(): Float {
+        val referenceEdge = listOf(mWidth, mLength)
+            .filter { it > 0.0 }
+            .minOrNull()
+            ?.toFloat()
+            ?: 0.20f
+        return (referenceEdge * TOP_SURFACE_MARGIN_RATIO)
+            .coerceIn(MIN_TOP_SURFACE_MARGIN_METERS, MAX_TOP_SURFACE_MARGIN_METERS)
+    }
+
+    private fun isWithinTopSurfaceProjection(candidatePose: Pose): Boolean {
+        if (mAnchorList.size < 3) {
+            return false
+        }
+        val cornerPose = mAnchorList[1].anchor.pose
+        val widthPose = mAnchorList[0].anchor.pose
+        val lengthPose = mAnchorList[2].anchor.pose
+
+        val widthVector = Vector3(
+            widthPose.tx() - cornerPose.tx(),
+            0.0f,
+            widthPose.tz() - cornerPose.tz()
+        )
+        val lengthVector = Vector3(
+            lengthPose.tx() - cornerPose.tx(),
+            0.0f,
+            lengthPose.tz() - cornerPose.tz()
+        )
+        val candidateVector = Vector3(
+            candidatePose.tx() - cornerPose.tx(),
+            0.0f,
+            candidatePose.tz() - cornerPose.tz()
+        )
+
+        val widthLength = widthVector.length()
+        val lengthLength = lengthVector.length()
+        if (widthLength <= 0.001f || lengthLength <= 0.001f) {
+            return false
+        }
+
+        val widthOffset = Vector3.dot(candidateVector, widthVector.normalized())
+        val lengthOffset = Vector3.dot(candidateVector, lengthVector.normalized())
+        val margin = getTopSurfaceProjectionMargin()
+
+        return widthOffset in -margin..(widthLength + margin) &&
+            lengthOffset in -margin..(lengthLength + margin)
+    }
+
+    private fun findBestHeightCandidate(hits: List<HitResult>): Double? {
+        var pointCandidate: Double? = null
+        hits.forEach { hit ->
+            val trackable = hit.trackable
+            when (trackable) {
+                is DepthPoint -> {
+                    val candidate = getHeightCandidate(hit)
+                    if (candidate != null) {
+                        return candidate
+                    }
+                }
+
+                is ArPoint -> {
+                    if (pointCandidate == null) {
+                        pointCandidate = getHeightCandidate(hit)
+                    }
+                }
+            }
+        }
+        return pointCandidate
+    }
+
+    private fun updateStableHeightCandidate(candidateHeight: Double?): Boolean {
+        if (candidateHeight == null) {
+            if (mHeightCandidate == null && mDetectedHeight == null) {
+                resetHeightDetectionState()
+                return false
+            }
+            mHeightCandidateMissingFrames += 1
+            if (mHeightCandidateMissingFrames >= HEIGHT_MISSING_FRAME_TOLERANCE) {
+                resetHeightDetectionState()
+                return false
+            }
+            return true
+        }
+        mHeightCandidateMissingFrames = 0
+        val currentCandidate = mHeightCandidate
+        if (currentCandidate == null || abs(currentCandidate - candidateHeight) > HEIGHT_STABLE_TOLERANCE_METERS) {
+            mHeightCandidate = candidateHeight
+            mHeightCandidateStableFrames = 1
+            mDetectedHeight = null
+            mIsHeightDetected = false
+            return true
+        }
+        val nextFrameCount = mHeightCandidateStableFrames + 1
+        mHeightCandidate =
+            ((currentCandidate * mHeightCandidateStableFrames) + candidateHeight) / nextFrameCount
+        mHeightCandidateStableFrames = nextFrameCount
+        if (mHeightCandidateStableFrames >= HEIGHT_STABLE_FRAME_COUNT) {
+            mDetectedHeight = mHeightCandidate
+            mIsHeightDetected = true
+        }
+        return true
+    }
+
+    private fun resetHeightDetectionState() {
+        mDetectedHeight = null
+        mIsHeightDetected = false
+        mHeightCandidate = null
+        mHeightCandidateStableFrames = 0
+        mHeightCandidateMissingFrames = 0
+    }
+
+    private fun updateRayUi(hasTarget: Boolean) {
+        if (mLastRayHasTarget == hasTarget) {
+            return
+        }
+        mLastRayHasTarget = hasTarget
+        if (hasTarget) {
+            ivFpsTarget.setColorFilter(Color.parseColor("#66de7b"))
+            btRay.shapeDrawableBuilder.apply {
+                solidColor = Color.parseColor("#fcfcfc")
+                intoBackground()
+            }
+            ivRayImg.setColorFilter(Color.parseColor("#8b8b8c"))
+        } else {
+            ivFpsTarget.setColorFilter(Color.parseColor("#f1f3f3"))
+            btRay.shapeDrawableBuilder.apply {
+                solidColor = Color.parseColor("#8b8b8c")
+                intoBackground()
+            }
+            ivRayImg.setColorFilter(Color.parseColor("#fcfcfc"))
         }
     }
 
